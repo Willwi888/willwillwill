@@ -162,14 +162,14 @@ const LyricsTiming: React.FC<LyricsTimingProps> = ({ lyricsText, audioUrl, backg
   const isCompleteEnabled = useMemo(() => timestamps.every(t => t !== null), [timestamps]);
 
   return (
-    <div className="w-full max-w-7xl mx-auto min-h-[85vh] h-full flex flex-col">
+    <div className="w-full max-w-7xl mx-auto h-[85vh] flex flex-col">
       <div className="flex-grow flex flex-col lg:flex-row gap-8 items-start overflow-hidden">
         {/* Left Column: Album Art & Hotkeys */}
         <div className="w-full lg:w-1/3 flex-shrink-0 lg:sticky lg:top-0">
-          <h3 className="text-xl font-bold text-gray-300 mb-4 text-center">湯底預覽</h3>
+          <h3 className="text-xl font-bold text-gray-300 mb-4 text-center">專輯封面</h3>
           <img src={backgroundImageUrl} alt="專輯封面" className="w-full aspect-square object-cover rounded-lg shadow-2xl ring-1 ring-white/10 filter blur-sm" />
-          <div className="hidden lg:block mt-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-             <h4 className="font-semibold text-gray-300 mb-2">阿嬤的秘訣</h4>
+          <div className="mt-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+             <h4 className="font-semibold text-gray-300 mb-2">快捷鍵</h4>
              <div className="text-sm text-left grid grid-cols-2 gap-x-4 gap-y-2 text-gray-300">
                 <div className="font-mono"><kbd className="font-sans px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↑</kbd> / <kbd className="font-sans px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">↓</kbd></div>
                 <div className="text-gray-400">選擇上/下一句</div>
@@ -186,8 +186,8 @@ const LyricsTiming: React.FC<LyricsTimingProps> = ({ lyricsText, audioUrl, backg
           <table className="w-full text-left text-gray-200">
             <thead className="sticky top-0 bg-gray-800 z-10">
               <tr className="border-b border-gray-600">
-                <th colSpan={2} className="p-2 lg:p-4 text-center text-gray-300 font-semibold">時間</th>
-                <th rowSpan={2} className="p-2 lg:p-4 align-bottom text-gray-300 font-semibold">歌詞</th>
+                <th colSpan={2} className="p-4 text-center text-gray-300 font-semibold">時間</th>
+                <th rowSpan={2} className="p-4 align-bottom text-gray-300 font-semibold">歌詞</th>
               </tr>
               <tr className="border-b border-gray-600">
                 <th className="py-2 px-3 text-center font-normal text-sm text-gray-400">開始</th>
@@ -229,7 +229,7 @@ const LyricsTiming: React.FC<LyricsTimingProps> = ({ lyricsText, audioUrl, backg
                     onClick={() => setActiveLineIndex(index)}
                     className={rowClassName}
                   >
-                    <td className="p-2 lg:p-3 text-center w-24 font-mono text-sm">
+                    <td className="p-3 text-center w-28 font-mono">
                       <div className="flex items-center justify-center gap-2">
                         <span>{timestamps[index] !== null ? `${timestamps[index]!.toFixed(2)}s` : '---'}</span>
                         {timestamps[index] !== null && (
@@ -243,10 +243,10 @@ const LyricsTiming: React.FC<LyricsTimingProps> = ({ lyricsText, audioUrl, backg
                         )}
                       </div>
                     </td>
-                    <td className="p-2 lg:p-3 text-center w-20 font-mono text-gray-400 text-sm">
+                    <td className="p-3 text-center w-24 font-mono text-gray-400">
                       {endTime && endTime > 0 ? `${endTime.toFixed(2)}s` : '---'}
                     </td>
-                    <td className="p-2 lg:p-3 text-base lg:text-lg">
+                    <td className="p-3 text-lg">
                        {isEndLine ? (
                         <p className="px-2 -mx-2 text-gray-400 italic">{line}</p>
                        ) : (
@@ -290,7 +290,7 @@ const LyricsTiming: React.FC<LyricsTimingProps> = ({ lyricsText, audioUrl, backg
           />
           <span className="text-sm text-gray-400 font-mono w-12 text-center">{formatTime(duration)}</span>
         </div>
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between">
           <button 
               onClick={onBack} 
               className="px-6 py-2 text-gray-300 font-semibold bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
@@ -308,10 +308,9 @@ const LyricsTiming: React.FC<LyricsTimingProps> = ({ lyricsText, audioUrl, backg
               disabled={!isCompleteEnabled}
               className="px-6 py-2 bg-[#a6a6a6] text-gray-900 font-bold rounded-lg border border-white/50 hover:bg-[#999999] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-              好了，試味道
+              完成並預覽
           </button>
         </div>
-         <p className="text-center text-xs text-gray-500 pt-2">阿嬤說：麵要 Q，時間就要抓得準。</p>
       </div>
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 8px; }

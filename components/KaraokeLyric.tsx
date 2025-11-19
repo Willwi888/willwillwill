@@ -1,81 +1,55 @@
-import React, { useMemo } from 'react';
-import { ColorPalette } from '../styles/colors';
+import React from 'react';
 
 interface KaraokeLyricProps {
   text: string;
   startTime: number;
   endTime: number;
   currentTime: number;
-  colorPalette: ColorPalette;
-  isPlaying: boolean; 
+  isPlaying: boolean;
+  style?: React.CSSProperties;
+  activeColor?: string;
+  inactiveColor?: string;
 }
 
-const KaraokeLyric: React.FC<KaraokeLyricProps> = ({ text, startTime, endTime, currentTime, colorPalette, isPlaying }) => {
-  const words = useMemo(() => text.split(/(\s+)/), [text]); // Keep spaces for layout
-  const lineDuration = endTime - startTime;
+const KaraokeLyric: React.FC<KaraokeLyricProps> = ({ 
+  text, 
+  startTime, 
+  endTime, 
+  currentTime, 
+  isPlaying, 
+  style,
+  activeColor = '#FFFFFF',
+  inactiveColor = '#9ca3af' 
+}) => {
+  const duration = (endTime - startTime) * 1000;
+  // Negative delay makes the animation jump to the correct progress if we start mid-lyric
+  const delay = (startTime - currentTime) * 1000;
 
-  // Calculate overall progress for the line
-  const lineProgress = lineDuration > 0 
-    ? Math.max(0, Math.min(1, (currentTime - startTime) / lineDuration)) 
-    : (currentTime >= endTime ? 1 : 0);
-
-  // Count only non-space words for timing calculation
-  const nonSpaceWordsCount = useMemo(() => words.filter(w => w.trim() !== '').length, [words]);
-  
-  let wordCounter = 0;
+  const animationStyle: React.CSSProperties = {
+    ...style,
+    backgroundImage: `linear-gradient(to right, ${activeColor} 50%, ${inactiveColor} 50%)`,
+    backgroundSize: '200% 100%',
+    backgroundPosition: '100%',
+    WebkitBackgroundClip: 'text',
+    backgroundClip: 'text',
+    color: 'transparent',
+    animation: `karaoke-highlight ${Math.max(0, duration)}ms linear ${delay}ms forwards`,
+    animationPlayState: isPlaying ? 'running' : 'paused',
+  };
 
   return (
     <>
-      <style>{`
-        .karaoke-word-wrapper {
-          position: relative;
-          display: inline-block;
-          white-space: pre; /* Render spaces correctly */
-        }
-        .karaoke-word-highlight {
-          position: absolute;
-          left: 0;
-          top: 0;
-          height: 100%;
-          overflow: hidden;
-          white-space: pre;
-          transition: width ${isPlaying ? '0.05s linear' : '0s'};
-        }
-      `}</style>
-      <div>
-        {words.map((word, index) => {
-          const isSpace = word.trim() === '';
-          // Increment word counter only for actual words
-          if (!isSpace) {
-            wordCounter++;
+      <style>
+        {`
+          @keyframes karaoke-highlight {
+            from { background-position: 100%; }
+            to { background-position: 0%; }
           }
-
-          // Don't try to time empty words
-          if (nonSpaceWordsCount === 0) {
-              return <span key={index}>{word}</span>;
-          }
-
-          const wordStartProgress = (wordCounter - 1) / nonSpaceWordsCount;
-          const wordEndProgress = wordCounter / nonSpaceWordsCount;
-
-          let highlightWidth = '0%';
-          if (lineProgress >= wordEndProgress) {
-            highlightWidth = '100%';
-          } else if (lineProgress > wordStartProgress) {
-            const progressIntoWord = (lineProgress - wordStartProgress) / (wordEndProgress - wordStartProgress);
-            highlightWidth = `${progressIntoWord * 100}%`;
-          }
-
-          return (
-            <span key={index} className="karaoke-word-wrapper" style={{ color: colorPalette.base }}>
-              <span className="karaoke-word-highlight" style={{ width: highlightWidth, color: colorPalette.highlight }}>
-                {word}
-              </span>
-              {word}
-            </span>
-          );
-        })}
-      </div>
+        `}
+      </style>
+      <p style={animationStyle} className="text-center font-bold drop-shadow-lg tracking-wide">
+        {text}
+      </p>
     </>
   );
 };
