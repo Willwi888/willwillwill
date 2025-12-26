@@ -1,5 +1,5 @@
 {
-  "name": "純純打",
+  "name": "阿嬤牌-純手打",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,8 +11,7 @@
   "dependencies": {
     "react": "^18.2.0",
     "@google/genai": "^1.21.0",
-    "react-dom": "^18.2.0",
-    "@ffmpeg/core": "0.11.0"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

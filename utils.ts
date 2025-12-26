@@ -56,3 +56,31 @@ export const fileToBase64 = (file: File): Promise<string> => {
     reader.onerror = (error) => reject(error);
   });
 };
+
+/**
+ * Formats a duration in seconds to the SRT time format HH:MM:SS,ms.
+ * @param totalSeconds The duration in seconds.
+ * @returns The formatted time string.
+ */
+const formatSrtTime = (totalSeconds: number): string => {
+    const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+    const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+    const seconds = Math.floor(totalSeconds % 60).toString().padStart(2, '0');
+    const milliseconds = Math.round((totalSeconds - Math.floor(totalSeconds)) * 1000).toString().padStart(3, '0');
+    return `${hours}:${minutes}:${seconds},${milliseconds}`;
+};
+
+/**
+ * Converts an array of TimedLyric objects into an SRT formatted string.
+ * @param timedLyrics The array of timed lyrics.
+ * @returns A string containing the lyrics in SRT format.
+ */
+export const lyricsToSrt = (timedLyrics: TimedLyric[]): string => {
+    return timedLyrics
+        .map((lyric, index) => {
+            const startTime = formatSrtTime(lyric.startTime);
+            const endTime = formatSrtTime(lyric.endTime);
+            return `${index + 1}\n${startTime} --> ${endTime}\n${lyric.text}\n`;
+        })
+        .join('\n');
+};

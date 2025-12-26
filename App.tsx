@@ -12,6 +12,7 @@ import Loader from './components/Loader';
 import { parseSrt, fileToBase64 } from './utils';
 import { generateImagesForLyrics, editImage, generateSrtFromLyrics, generateVideoFromImage } from './services/geminiService';
 import { completionMessages, inspirationalMessages, getRandomMessage } from './messages';
+import CloudArrowUpIcon from './components/icons/CloudArrowUpIcon';
 
 
 type AppState = 'WELCOME' | 'FORM' | 'TIMING' | 'PREVIEW';
@@ -24,6 +25,8 @@ const App: React.FC = () => {
   const [songTitle, setSongTitle] = useState('');
   const [artistName, setArtistName] = useState('');
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioCloudUrl, setAudioCloudUrl] = useState('');
+  const [fetchedAudioFile, setFetchedAudioFile] = useState<File | null>(null); // For storing file fetched from URL
   const [backgroundImages, setBackgroundImages] = useState<(File|string)[]>([]);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [timedLyrics, setTimedLyrics] = useState<TimedLyric[]>([]);
@@ -60,7 +63,11 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const audioUrl = audioFile ? URL.createObjectURL(audioFile) : '';
+  const audioUrl = useMemo(() => {
+    if (audioCloudUrl) return audioCloudUrl;
+    if (audioFile) return URL.createObjectURL(audioFile);
+    return '';
+  }, [audioFile, audioCloudUrl]);
   
   const handleAudioMetadata = (e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
     audioDurationRef.current = e.currentTarget.duration;
@@ -77,8 +84,8 @@ const App: React.FC = () => {
 
   const handleStart = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lyricsText || !audioFile || !songTitle || !artistName) {
-      alert('請填寫所有必填欄位！');
+    if (!lyricsText || !(audioFile || fetchedAudioFile) || !songTitle || !artistName) {
+      alert('請填寫所有必填欄位並上傳或連結音訊檔！');
       return;
     }
     if (timedLyricsFromSrt) {
@@ -134,6 +141,39 @@ const App: React.FC = () => {
     setBackgroundImages(prev => prev.filter((_, i) => i !== index));
   };
   
+    const fetchAudioFromUrl = async (url: string) => {
+        setIsLoading({ active: true, message: '正在從雲端下載音訊...' });
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`無法獲取音訊檔案，狀態碼: ${response.status}`);
+            }
+            const blob = await response.blob();
+            // Try to guess a filename from URL
+            const fileName = url.substring(url.lastIndexOf('/') + 1) || 'cloud_audio.mp3';
+            const file = new File([blob], fileName, { type: blob.type || 'audio/mpeg' });
+            
+            setFetchedAudioFile(file);
+            setAudioFile(null); // Clear local file selection
+            setAudioCloudUrl(url); // Set URL for the audio player source
+
+        } catch (error) {
+            console.error("Error fetching audio from URL:", error);
+            alert(`從雲端載入音訊失敗。請檢查網址是否正確，且允許公開存取 (CORS)。\n錯誤訊息: ${error instanceof Error ? error.message : '未知錯誤'}`);
+            setAudioCloudUrl('');
+        } finally {
+            setIsLoading({ active: false, message: '' });
+        }
+    };
+
+    const handleLinkCloudAudio = () => {
+        const url = prompt('請輸入公開的音訊檔案網址 (例如：Google Drive, Dropbox 的直接下載連結)');
+        if (url) {
+            fetchAudioFromUrl(url);
+        }
+    };
+
+
   const runAiImageGeneration = async () => {
     if (!lyricsText || !songTitle || !artistName) {
       alert('請先填寫歌曲名稱、歌手名稱和歌詞，才能使用 AI 生成圖片。');
@@ -181,8 +221,8 @@ const App: React.FC = () => {
   };
   
   const runAiLyricTiming = async () => {
-    if (!lyricsText || !songTitle || !artistName || !audioFile || audioDurationRef.current === 0) {
-        alert('請先填寫歌曲、歌手、歌詞並上傳音訊檔案，才能使用 AI 自動抓軌。');
+    if (!lyricsText || !songTitle || !artistName || !(audioFile || fetchedAudioFile) || audioDurationRef.current === 0) {
+        alert('請先填寫歌曲、歌手、歌詞並上傳或連結音訊檔案，才能使用 AI 自動抓軌。');
         return;
     }
     setIsLoading({ active: true, message: 'AI 正在幫你對節拍，阿嬤在旁邊監督...' });
@@ -270,6 +310,7 @@ const App: React.FC = () => {
 
 
   const renderContent = () => {
+    const effectiveAudioFile = audioFile || fetchedAudioFile;
     switch (appState) {
       case 'WELCOME':
         return (
@@ -301,7 +342,7 @@ const App: React.FC = () => {
           <VideoPlayer
             timedLyrics={timedLyrics}
             audioUrl={audioUrl}
-            audioFile={audioFile}
+            audioFile={effectiveAudioFile}
             imageUrls={backgroundUrls}
             videoUrl={videoUrl}
             onBack={timedLyricsFromSrt ? handleBackToForm : handleBackToTiming}
@@ -314,7 +355,7 @@ const App: React.FC = () => {
         return (
           <div className="w-full max-w-2xl p-4 sm:p-8 space-y-6 bg-gray-800/50 backdrop-blur-sm rounded-xl shadow-2xl border border-gray-700">
              {isLoading.active && <Loader message={isLoading.message} />}
-             <audio src={audioUrl} onLoadedMetadata={handleAudioMetadata} className="hidden" />
+             <audio src={audioUrl} onLoadedMetadata={handleAudioMetadata} className="hidden" crossOrigin="anonymous" />
             <div className="text-center">
               <h2 className="mt-4 text-3xl font-bold tracking-tight text-white">
                 泡麵歌詞器 — 音樂調理說明
@@ -352,11 +393,16 @@ const App: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-300 mb-2">🍲 主湯音訊檔（選擇乾濕吃法）</label>
                 <div className="mt-1 flex flex-col justify-center px-6 pt-5 pb-6 border-2 border-gray-600 border-dashed rounded-md">
                     <div className="space-y-2 text-center">
-                        <div className="flex justify-center text-sm text-gray-400">
-                            <label htmlFor="audio-upload" className="relative cursor-pointer bg-gray-800 rounded-md font-medium text-gray-400 hover:text-gray-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-gray-900 focus-within:ring-gray-500 px-3 py-1">
-                                <span>上傳檔案</span><input id="audio-upload" name="audio-upload" type="file" className="sr-only" accept="audio/*" onChange={(e) => setAudioFile(e.target.files?.[0] || null)} required />
+                        <div className="flex justify-center text-sm text-gray-400 gap-4">
+                            <label htmlFor="audio-upload" className="relative cursor-pointer bg-gray-700/80 rounded-md font-medium text-gray-300 hover:text-white hover:bg-gray-600/80 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-gray-900 focus-within:ring-gray-500 px-4 py-2 flex items-center gap-2 transition-colors">
+                                <UploadIcon className="w-5 h-5" />
+                                <span>上傳檔案</span>
+                                <input id="audio-upload" name="audio-upload" type="file" className="sr-only" accept="audio/*" onChange={(e) => { setAudioFile(e.target.files?.[0] || null); setAudioCloudUrl(''); setFetchedAudioFile(null); }} />
                             </label>
-                            <p className="pl-1 self-center">或直接拖曳進來</p>
+                            <button type="button" onClick={handleLinkCloudAudio} className="relative cursor-pointer bg-gray-700/80 rounded-md font-medium text-gray-300 hover:text-white hover:bg-gray-600/80 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-offset-gray-900 focus-within:ring-gray-500 px-4 py-2 flex items-center gap-2 transition-colors">
+                               <CloudArrowUpIcon className="w-5 h-5" />
+                               <span>從雲端連結</span>
+                            </button>
                         </div>
                         <div className="text-xs text-gray-500 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-left pt-2 px-2">
                             <div>
@@ -368,7 +414,7 @@ const App: React.FC = () => {
                                 <p>適合完整版音軌（含人聲＋伴奏）。聽完要配衛生紙，情緒湯濃得化不開。</p>
                             </div>
                         </div>
-                        <p className="text-xs text-gray-600 pt-2">{audioFile ? audioFile.name : '支援格式：MP3, WAV, FLAC 等。'}</p>
+                         <p className="text-xs text-gray-600 pt-2 truncate px-4">{audioFile ? audioFile.name : audioCloudUrl ? audioCloudUrl : '支援格式：MP3, WAV, FLAC 等。'}</p>
                     </div>
                 </div>
               </div>
@@ -437,7 +483,7 @@ const App: React.FC = () => {
               </div>
 
               <div>
-                <button type="submit" disabled={!lyricsText || !audioFile || !songTitle || !artistName} className="w-full flex justify-center py-3 px-4 border border-white/50 rounded-md shadow-sm text-sm font-bold text-gray-900 bg-[#a6a6a6] hover:bg-[#999999] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                <button type="submit" disabled={!lyricsText || !effectiveAudioFile || !songTitle || !artistName} className="w-full flex justify-center py-3 px-4 border border-white/50 rounded-md shadow-sm text-sm font-bold text-gray-900 bg-[#a6a6a6] hover:bg-[#999999] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                   {timedLyricsFromSrt ? '煮好了，試吃看看' : '開始煮麵'}
                 </button>
               </div>
@@ -453,6 +499,7 @@ const App: React.FC = () => {
 
   return (
     <main className={`min-h-screen bg-gray-900 text-white transition-opacity duration-500 ${isMounted ? 'opacity-100' : 'opacity-0'} ${appState !== 'WELCOME' && 'p-4'}`}>
+        {isLoading.active && <Loader message={isLoading.message} />}
         {appState === 'WELCOME' ? (
             renderContent()
         ) : (
